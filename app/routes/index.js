@@ -20,26 +20,31 @@ router.get('/', function(req, res, next) {
     if (err) return next(err);
     connection.query('SELECT * FROM users', function(err, rows, fields) {
       connection.release();
+      
       server_log = 'GET Request received on' + server_ip + ':' + server_port;
       console.log(server_log);
+
       if (isEmpty(rows)) {
         server_log = 'Result row is an empty object';
         console.log(server_log);
         return next(err);
       }
       else {
-        var results = '';
+        var userArray = []
+        var results = { result : 'success' };
         for (var i in rows) {
-          results += 'id = ' + rows[i].id + '\n' 
-                     + 'name = ' + rows[i].name + '\n'
-                     + 'phone = ' + rows[i].phone + '\n'
-                     + 'coin = ' + rows[i].coin + '\n'
-                     + 'pic = ' + rows[i].pic + '\n'
-                     + 'joindate = ' + rows[i].joindate + '\n\n';
+          userArray = userArray.concat({
+            id : rows[i].id,
+            name : rows[i].name,
+            phone : rows[i].phone,
+            coin : rows[i].coin,
+            pic : rows[i].pic,
+            joindate : rows[i].joindata});
         }
         
-        console.log(results);
-        res.render('index', { title: 'MySQL Test', result: results });
+        console.log(userArray);
+        results['users'] =  userArray;
+        res.json(results);
       }
     });
 
@@ -52,13 +57,40 @@ router.get('/', function(req, res, next) {
 ////////////////////////////////////////////////////////////////////////////
 
 router.post('/', function(req, res, next) {
+  var json = req.body;
+  if (isEmpty(json)) {
+    res.json({result:'failed', description:'json body is empty'});
+    return;
+  }
+  if (!json.type) {
+    res.json({result:'failed', description:'you must specify type'});
+    return;
+  }
+  switch(json.type) {
+    case 'NEW_USER':
+      res.json({result:'success', description:'NEW_USER'});
+    break;
 
+    default:
+      res.json({result:'failed', description:'unknown type'});
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////////
 
 // Speed up calls to hasOwnProperty
 var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+/*
+function isEmptyObject(obj) {
+  for (var key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      return false;
+    }
+  }
+  return true;
+}
+*/
 
 function isEmpty(obj) {
 
