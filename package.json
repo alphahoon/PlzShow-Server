@@ -1,0 +1,23 @@
+{
+  "name": "plz_show",
+  "version": "1.0.0",
+  "description": "CS496 Project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alphahoon/PlzShow-server.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alphahoon/PlzShow-server/issues"
+  },
+  "homepage": "https://github.com/alphahoon/PlzShow-server#readme",
+  "dependencies": {
+    "express": "^4.14.0",
+    "mysql": "^2.12.0"
+  }
+}
