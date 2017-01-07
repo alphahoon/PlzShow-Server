@@ -18,6 +18,7 @@
   "homepage": "https://github.com/alphahoon/PlzShow-server#readme",
   "dependencies": {
     "express": "^4.14.0",
+    "fcm-push": "^1.1.2",
     "mysql": "^2.12.0"
   }
 }
