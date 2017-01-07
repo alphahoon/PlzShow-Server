@@ -58,6 +58,8 @@ router.get('/', function(req, res, next) {
 
 router.post('/', function(req, res, next) {
   var json = req.body;
+  console.log(json);
+
   if (isEmpty(json)) {
     res.json({result:'failed', description:'json body is empty'});
     return;
@@ -66,14 +68,134 @@ router.post('/', function(req, res, next) {
     res.json({result:'failed', description:'you must specify type'});
     return;
   }
-  switch(json.type) {
-    case 'NEW_USER':
-      res.json({result:'success', description:'NEW_USER'});
-    break;
+
+  // should release connection before the last callback function
+  pool.getConnection(function(err, connection) {
+    if (err) return next(err);
+    var query = '';
+    switch(json.type) {
+      case 'GET_USER':
+        if (!json.user_id) {
+          res.json({result:'failed', description:'user_id field not found'});
+          connection.release();
+          return;
+        }
+        query = 'SELECT * FROM users WHERE id = ?';
+        connection.query(query, [json.user_id], function(err, rows, fields) {
+          if (err) {
+            connection.release();
+            return next(err);
+          }
+
+          if (isEmpty(rows)) {
+            res.json({result:'failed', description:'user_id not found'});
+            connection.release();
+            return;
+          }
+          else {
+            var response = {result:'success'};
+            response['name'] = rows[0].name;
+            response['phone'] = rows[0].phone;
+            response['coin'] = rows[0].coin;
+            response['pic'] = rows[0].pic;
+            response['joindate'] = rows[0].joindate;
+            console.log(response);
+            res.json(response);
+            connection.release();
+            return;
+          }
+        });
+        break;
+
+/*
+      case 'NEW_USER':
+        if (!json.user_id) {
+          res.json({result:'failed', description:'user_id field not found'});
+          connection.release();
+          return;
+        }
+        if (!json.name || !json.phone) {
+          res.json({result:'failed', description:'name or phone fields not found'});
+          connection.release();
+          return;
+        }
+        query = 'SELECT * FROM users WHERE id = ?';
+        connection.query(query, [json.user_id], function(err, rows, fields) {
+          if (err) {
+            connection.release();
+            return next(err);
+          }
+          if (!isEmpty(rows)) { 
+            res.json({result:'failed', description:'user_id already exists'});
+            connection.release();
+            return;
+          }
+          else {
+            query = 'INSERT INTO users (id, name, phone, joindate) VALUES (?, ?, ?, ?)';
+            connection.query(query, [json.user_id, json.name, json.phone, getLocalTime()], function(err, rows, fields) {
+              if (err) {
+                connection.release();
+                return next(err);
+              }
+              else {
+                res.json({result:'success', description:'new user created with the given id'});
+                connection.release();
+                return;
+              }
+            });
+          }
+        });
+        break;
+*/
+
+    case 'LOGIN':
+      // id, name, token
+      if (!json.user_id || !json.name || !json.token) {
+        res.json({result:'failed', description:'user_id or name or token field not found'});
+        connection.release();
+        return;
+      }
+      query = 'SELECT * FROM users WHERE id = ?';
+      connection.query(query, [json.user_id], function(err, rows, fields) {
+        if (err) {
+          connection.release();
+          return next(err);
+        }
+        if (!isEmpty(rows)) {
+          // IF THE USER EXISTS, UPDATE USER WITH ID, NAME, TOKEN
+          query = 'UPDATE users SET name = ?, token = ? WHERE id = ?';
+          connection.query(query, [json.name, json.token, json.user_id], function(err, rows, fields) {
+            if (err) {
+              connection.release();
+              return next(err);
+            }
+            res.json({result:'success', description:'updated the user with the given id'});
+            connection.release();
+            return;
+          });
+        }
+        else {
+          // IF NOT EXISTS, CREATE USER WITH ID, NAME, TOKEN, CURRENT TIME
+          query = 'INSERT INTO users (id, name, joindate, token) VALUES (?, ?, ?, ?)';
+          connection.query(query, [json.user_id, json.name, getLocalTime(), json.token], function(err, rows, fields) {
+            if (err) {
+              connection.release();
+              return next(err);
+            }
+            res.json({result:'success', description:'new user created with the given id, name, and token'});
+            connection.release();
+            return;
+          });
+        }
+      });
+      break;
 
     default:
       res.json({result:'failed', description:'unknown type'});
-  }
+      return;
+      break;
+    }
+  });
 });
 
 ////////////////////////////////////////////////////////////////////////////
@@ -115,6 +237,20 @@ function isEmpty(obj) {
     }
 
     return true;
+}
+
+function trimTimeFormat(time) {
+  return time.toISOString().slice(0,19).replace('T', ' ');
+}
+
+function GMTtoKST(date) {
+  var timeOffset = 9 * 60 * 60 * 1000;
+  var localTime = date.getTime() + timeOffset;
+  return trimTimeFormat(new Date(localTime));
+}
+
+function getLocalTime() {
+  return GMTtoKST(new Date());
 }
 
 module.exports = router;
