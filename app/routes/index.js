@@ -15,8 +15,10 @@ var pool = mysql.createPool({
     database : 'db'
 }); 
 
-var api_key = 'AAAAiaASgRA:APA91bGhAAAB1N__438GTHmA81tB4MOt2pGIokoxkY6Xj2hthwLwJqdKIGeoQyFcpbAa5HqQqGFDGbJ0TADJfeJ3450NsY03pB3ODxov3LUCIN7Fx_ykpgeQuPDAHVt2MEWYvcnKRHOo';
-var fcm = new FCM(api_key);
+var api_key_user = 'AAAA4BX5XIE:APA91bHOk2pugW9uBNoXwIY-9vgqHJ15Z4_co-77uctFCAHiTFfWpcNHjgRtA99iD9UuJQ1y87IMVxgkqANDZxnppsVvE32fTenkwHvdhf4ugmrre8eCCGwJhOAmaQYV_iz0W-3ebb0T';
+var api_key_rest = 'AAAAiaASgRA:APA91bGhAAAB1N__438GTHmA81tB4MOt2pGIokoxkY6Xj2hthwLwJqdKIGeoQyFcpbAa5HqQqGFDGbJ0TADJfeJ3450NsY03pB3ODxov3LUCIN7Fx_ykpgeQuPDAHVt2MEWYvcnKRHOo';
+var fcm_user = new FCM(api_key_user);
+var fcm_rest = new FCM(api_key_rest);
 
 var http_protocol = 'http://';
 var server_address = '52.78.200.87:3000';
@@ -159,6 +161,7 @@ router.post('/', function(req, res, next) {
           query = 'UPDATE users SET name = ?, token = ? WHERE id = ?';
           connection.query(query, [json.name, json.token, json.user_id], function(err, rows, fields) {
             if (err) {
+              console.log(err);
               connection.release();
               return next(err);
             }
@@ -172,6 +175,7 @@ router.post('/', function(req, res, next) {
           query = 'INSERT INTO users (id, name, joindate, token) VALUES (?, ?, ?, ?)';
           connection.query(query, [json.user_id, json.name, getLocalTime(), json.token], function(err, rows, fields) {
             if (err) {
+              console.log(err);
               connection.release();
               return next(err);
             }
@@ -279,10 +283,10 @@ router.post('/', function(req, res, next) {
       break;
 
     case 'REST_LOGIN':
-      // id, name, token
-      if (!json.rest_id || !json.name || !json.token) {
+      // id, token
+      if (!json.rest_id || !json.token) {
         connection.release();
-        res.json({result:'failed', description:'rest_id or name or token field not found'});
+        res.json({result:'failed', description:'rest_id or token field not found'});
         return;
       }
       query = 'SELECT * FROM restaurants WHERE id = ?';
@@ -293,9 +297,10 @@ router.post('/', function(req, res, next) {
         }
         if (!isEmpty(rows)) {
           // IF THE RESTAURANT EXISTS, UPDATE THE RESTAURANT WITH NAME, TOKEN
-          query = 'UPDATE users SET name = ?, token = ? WHERE id = ?';
-          connection.query(query, [json.name, json.token, json.rest_id], function(err, rows, fields) {
+          query = 'UPDATE users SET token = ? WHERE id = ?';
+          connection.query(query, [json.token, json.rest_id], function(err, rows, fields) {
             if (err) {
+              console.log(err);
               connection.release();
               return next(err);
             }
@@ -307,13 +312,14 @@ router.post('/', function(req, res, next) {
         else {
           // IF NOT EXISTS, CREATE A RESTAURANT WITH ID, NAME, AND TOKEN
           query = 'INSERT INTO restaurants (id, name, token) VALUES (?, ?, ?)';
-          connection.query(query, [json.rest_id, json.name, json.token], function(err, rows, fields) {
+          connection.query(query, [json.rest_id, '', json.token], function(err, rows, fields) {
             if (err) {
+              console.log(err);
               connection.release();
               return next(err);
             }
             connection.release();
-            res.json({result:'success', description:'new restaurant created with the given id, name, and token'});
+            res.json({result:'success', description:'new restaurant created with the given id, and token'});
             return;
           });
         }
@@ -409,8 +415,11 @@ router.post('/', function(req, res, next) {
           res.json({result:'failed', description:'rest_id not exists'});
           return next(err);
         }
+        //mk
+        var photos=[]
         for (var i in json.img) {
           var url = saveImageSync(json.img[i]);
+          photos.push({photo : url})
           query = 'INSERT INTO photos (rest_id, photo) VALUES (?, ?)';
           connection.query(query, [json.rest_id, url], function(err, rows, fields) {
             if (err) {
@@ -420,7 +429,7 @@ router.post('/', function(req, res, next) {
           });
         }
         connection.release();
-        res.json({result:'success', description:'uploaded gallery photos'});
+        res.json({result:'success', photos: photos});
         return;
       });
       break;
@@ -620,41 +629,6 @@ router.post('/', function(req, res, next) {
       break;
 
     case 'MAKE_RESERVATION':
-
-      // query = 'SELECT token FROM restaurants WHERE id = ?'
-      // connection.query(query, json.rest_id, function (err, rows, fields) {
-      //     if (err) {
-      //       connection.release();
-      //       return next(err);
-      //     }
-      //     var token = rows[0].token;
-      //     var message = {
-      //       to: token,
-      //       data: {
-      //         user_name: json.user_name,
-      //         people: json.people,
-      //         reserv_time: json.reserv_time,
-      //         request: json.request,
-      //         reserv_fee: json.reserv_fee,
-      //         user_phone: json.use_phone
-      //       },
-      //       notification: {
-      //         title: '새로운 예약 접수 알림',
-      //         body: json.user_name + "님이 " + json.reserv_time + "에 " + json.people + "명 예약을 접수했습니다."
-      //       }
-      //     };
-
-      //     fcm.send(message, function(err, response){
-      //         if (err) {
-      //           console.log(err);
-      //           console.log('Something has gone wrong!');
-      //         } else {
-      //           console.log('Successfully sent with response:', reponse);
-      //         }
-      //     });
-
-      // });
-
       // IF NOT EXISTS, CREATE AN RESERVATION WITH USER_ID, USER_NAME, REST_ID, REST_NAME, RESERV_TIME, USER_PHONE, SEND_TIME(IN SERVER),
       // RESERV_FEE, REQUEST, PEOPLE (OTHERS DEFAULT VALUE: ID, STATUS_MSG, STATUS_RES, CHECKED_TIME, RESPOND_TIME)
       query = 'INSERT INTO reservations (user_id, user_name, rest_id, rest_name, rest_phone, reserv_time, user_phone, send_time, reserv_fee, request, people) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
@@ -673,8 +647,43 @@ router.post('/', function(req, res, next) {
             return next(err);
           }
 
+          query = 'SELECT token FROM restaurants WHERE id = ?';
+          connection.query(query, json.rest_id, function (err, rows, fields) {
+            if (err) {
+              console.log(err);
+              connection.release();
+              return next(err);
+            }
+            var token = rows[0].token;
+            var message = {
+              to: token,
+              data: {
+                user_name: json.user_name,
+                people: json.people,
+                reserv_time: json.reserv_time,
+                request: json.request,
+                reserv_fee: json.reserv_fee,
+                user_phone: json.user_phone
+              },
+              notification: {
+                title: '새로운 예약 접수 알림',
+                body: json.user_name + '님이 ' + json.reserv_time + '에 ' + json.people + '명 예약을 접수했습니다.',
+                sound: 'default'
+              }
+            };
+
+            fcm_user.send(message, function(err, response){
+                if (err) {
+                  console.log(err);
+                  console.log('Something has gone wrong!');
+                } else {
+                  console.log('Successfully sent with response:', response);
+                }
+            });
+          });
+
           connection.release();
-          var msg = '예약금 ' + Number(json.reserv_fee) + '원으로 예약했습니다.'
+          var msg = '예약금 ' + Number(json.reserv_fee) + '원으로 예약했습니다.';
           res.json({result:'success', description:msg});
           return;
         });
@@ -690,7 +699,7 @@ router.post('/', function(req, res, next) {
       // NOT_READ_YET, CHECKED => CANCELABLE with NO PENALTY
       // ACCEPTED => CANCELABLE with PENALTY
       // DECLINED => NOT CANCELABLE
-      query = 'SELECT rest_id, status_msg, reserv_time, reserv_fee FROM reservations WHERE id = ? AND user_id = ?';
+      query = 'SELECT rest_id, user_name, status_msg, reserv_time, reserv_fee FROM reservations WHERE id = ? AND user_id = ?';
       connection.query(query, [json.reserv_id, json.user_id], function (err, rows, fields) {
         console.log(json.reserv_id, json.user_id);
         if (err) {
@@ -710,6 +719,7 @@ router.post('/', function(req, res, next) {
         var status_msg = rows[0].status_msg;
         var reserv_time = rows[0].reserv_time;
         var reserv_fee = Number(rows[0].reserv_fee);
+        var user_name = rows[0].user_name;
 
         if (status_msg == 'NOT_READ_YET' || status_msg == 'CHECKED') {
           query = 'DELETE FROM reservations WHERE id = ? AND user_id = ?';
@@ -721,6 +731,37 @@ router.post('/', function(req, res, next) {
             }
             
             // PUSH ALARM to RESTAURANT
+            query = 'SELECT token FROM restaurants WHERE id = ?';
+            connection.query(query, rest_id, function (err, rows, fields) {
+              if (err) {
+                console.log(err);
+                connection.release();
+                return next(err);
+              }
+              var token = rows[0].token;
+              var message = {
+                to: token,
+                data: {
+                  user_name: user_name,
+                  reserv_time: reserv_time,
+                  reserv_fee: reserv_fee
+                },
+                notification: {
+                  title: '예약 취소 알림',
+                  body: user_name + '님이 ' + reserv_time + '에 한 예약을 취소했습니다.',
+                  sound: 'default'
+                }
+              };
+
+              fcm_user.send(message, function(err, response){
+                  if (err) {
+                    console.log(err);
+                    console.log('Something has gone wrong!');
+                  } else {
+                    console.log('Successfully sent with response:', response);
+                  }
+              });
+            });
 
             // REFUND TO USER
             query = 'UPDATE users SET coin = coin + ? WHERE id = ?';
@@ -801,6 +842,39 @@ router.post('/', function(req, res, next) {
               connection.query(query, [refund_to_rest, rest_id], function (err, rows, fields) {
                 if (err) return next(err);
 
+                // PUSH ALARM to RESTAURANT
+                query = 'SELECT token FROM restaurants WHERE id = ?';
+                connection.query(query, rest_id, function (err, rows, fields) {
+                  if (err) {
+                    console.log(err);
+                    connection.release();
+                    return next(err);
+                  }
+                  var token = rows[0].token;
+                  var message = {
+                    to: token,
+                    data: {
+                      user_name: user_name,
+                      reserv_time: reserv_time,
+                      reserv_fee: reserv_fee
+                    },
+                    notification: {
+                      title: '예약 취소 알림',
+                      body: user_name + '님이 ' + reserv_time + '에 한 예약을 취소했습니다. 예약금 중 ' + refund_to_rest + '원을 지급받았습니다',
+                      sound: 'default'
+                    }
+                  };
+
+                  fcm_user.send(message, function(err, response){
+                      if (err) {
+                        console.log(err);
+                        console.log('Something has gone wrong!');
+                      } else {
+                        console.log('Successfully sent with response:', response);
+                      }
+                  });
+                });
+
                 connection.release();
                 var msg = '예약금 총' + reserv_fee + '원 중, ' + refund_to_user + '원을 환불받았습니다.'
                 res.json({result:'success', description:msg});
@@ -841,6 +915,7 @@ router.post('/', function(req, res, next) {
 
     case 'ACCEPT_RESERV':
       // PUSH ALARM TO USER
+
       // UPDATE RESERVATION'S STATUS_MSG, RESPOND_TIME
       if (!json.rest_id || !json.reserv_id) {
         connection.release();
@@ -850,9 +925,52 @@ router.post('/', function(req, res, next) {
       query = 'UPDATE reservations SET status_msg = ?, respond_time = ? WHERE id = ? AND rest_id = ?';
       connection.query(query, ['ACCEPTED', getLocalTime(), json.reserv_id, json.rest_id], function (err, rows, fields) {
         if (err) return next(err);
-        connection.release();
-        res.json({result:'success', description:'accepted reservation'});
-        return;
+
+        // PUSH ALARM to RESTAURANT
+        query = 'SELECT user_id, rest_name FROM reservations WHERE id = ?';
+        connection.query(query, json.reserv_id, function (err, rows, fields) {
+          if (err) {
+            connection.release();
+            return next(err);
+          }
+
+          var user_id = rows[0].user_id;
+          var rest_name = rows[0].rest_name;
+
+          query = 'SELECT token FROM users WHERE id = ?';
+          connection.query(query, user_id, function (err, rows, fields) {
+            if (err) {
+              console.log(err);
+              connection.release();
+              return next(err);
+            }
+            var token = rows[0].token;
+            var message = {
+              to: token,
+              data: {
+                rest_name: rest_name
+              },
+              notification: {
+                title: '예약 수락 알림',
+                body: rest_name + '님이 예약을 수락했습니다.',
+                sound: 'default'
+              }
+            };
+
+            fcm_rest.send(message, function(err, response){
+                if (err) {
+                  console.log(err);
+                  console.log('Something has gone wrong!');
+                } else {
+                  console.log('Successfully sent with response:', response);
+                }
+            });
+
+            connection.release();
+            res.json({result:'success', description:'accepted reservation'});
+            return;
+          });
+        });
       });
       break;
 
@@ -871,31 +989,54 @@ router.post('/', function(req, res, next) {
           connection.release();
           return next(err);
         }
-        query = 'SELECT user_id FROM reservations WHERE id = ? AND rest_id = ?';
+        query = 'SELECT user_id, rest_name, reserv_fee FROM reservations WHERE id = ? AND rest_id = ?';
         connection.query(query, [json.reserv_id, json.rest_id], function (err, rows, fields) {
           if (err) {
             console.log(err);
             connection.release();
             return next(err);
           }
-          var user_id = rows[0].id;
+          var user_id = rows[0].user_id;
+          var refund_to_user = rows[0].reserv_fee;
+          var rest_name = rows[0].rest_name;
 
-          query = 'SELECT reserv_fee FROM reservations WHERE id = ? AND rest_id = ?';
-          connection.query(query, [json.reserv_id, json.rest_id], function (err, rows, fields) {
+          query = 'UPDATE users SET coin = coin + ? WHERE id = ?';
+          connection.query(query, [refund_to_user, user_id], function (err, rows, fields) {
             if (err) {
               console.log(err);
               connection.release();
               return next(err);
             }
-            var refund_to_user = rows[0].reserv_fee;
 
-            query = 'UPDATE users SET coin = coin + ? WHERE id = ?';
-            connection.query(query, [refund_to_user, user_id], function (err, rows, fields) {
+            query = 'SELECT token FROM users WHERE id = ?';
+            connection.query(query, user_id, function (err, rows, fields) {
               if (err) {
                 console.log(err);
                 connection.release();
                 return next(err);
               }
+              var token = rows[0].token;
+              var message = {
+                to: token,
+                data: {
+                  rest_name: rest_name
+                },
+                notification: {
+                  title: '예약 거절 알림',
+                  body: rest_name + '님이 예약을 거절했습니다.',
+                  sound: 'default'
+                }
+              };
+
+              fcm_rest.send(message, function(err, response){
+                  if (err) {
+                    console.log(err);
+                    console.log('Something has gone wrong!');
+                  } else {
+                    console.log('Successfully sent with response:', response);
+                  }
+              });
+
               connection.release();
               res.json({result:'success', description:'declined reservation'});
               return;
@@ -922,31 +1063,54 @@ router.post('/', function(req, res, next) {
           return next(err);
         }
 
-        query = 'SELECT user_id FROM reservations WHERE id = ? AND rest_id = ?';
+        query = 'SELECT user_id, reserv_fee, rest_name FROM reservations WHERE id = ? AND rest_id = ?';
         connection.query(query, [json.reserv_id, json.rest_id], function (err, rows, fields) {
           if (err) {
             console.log(err);
             connection.release();
             return next(err);
           }
-          var user_id = rows[0].id;
+          var user_id = rows[0].user_id;
+          var refund_to_user = rows[0].reserv_fee;
+          var rest_name = rows[0].rest_name;
 
-          query = 'SELECT reserv_fee FROM reservations WHERE id = ? AND rest_id = ?';
-          connection.query(query, [json.reserv_id, json.rest_id], function (err, rows, fields) {
+          query = 'UPDATE users SET coin = coin + ? WHERE id = ?';
+          connection.query(query, [refund_to_user, user_id], function (err, rows, fields) {
             if (err) {
               console.log(err);
               connection.release();
               return next(err);
             }
-            var refund_to_user = rows[0].reserv_fee;
 
-            query = 'UPDATE users SET coin = coin + ? WHERE id = ?';
-            connection.query(query, [refund_to_user, user_id], function (err, rows, fields) {
+            query = 'SELECT token FROM users WHERE id = ?';
+            connection.query(query, user_id, function (err, rows, fields) {
               if (err) {
                 console.log(err);
                 connection.release();
                 return next(err);
               }
+              var token = rows[0].token;
+              var message = {
+                to: token,
+                data: {
+                  rest_name: rest_name
+                },
+                notification: {
+                  title: '예약을 지키셨군요!',
+                  body: '예약금 전액 ' + refund_to_user + '원을 환급받았습니다',
+                  sound: 'default'
+                }
+              };
+
+              fcm_rest.send(message, function(err, response){
+                  if (err) {
+                    console.log(err);
+                    console.log('Something has gone wrong!');
+                  } else {
+                    console.log('Successfully sent with response:', response);
+                  }
+              });
+
               connection.release();
               var msg = '손님에게 예약금 ' + refund_to_user + '원 전액을 환급했습니다.';
               res.json({result:'success', description:msg});
@@ -974,14 +1138,16 @@ router.post('/', function(req, res, next) {
           return next(err);
         }
 
-        query = 'SELECT reserv_fee FROM reservations WHERE id = ? AND rest_id = ?';
+        query = 'SELECT reserv_fee, rest_name, user_id FROM reservations WHERE id = ? AND rest_id = ?';
         connection.query(query, [json.reserv_id, json.rest_id], function (err, rows, fields) {
           if (err) {
             console.log(err);
             connection.release();
             return next(err);
           }
+          var user_id = rows[0].user_id;
           var refund_to_restaurant = rows[0].reserv_fee;
+          var rest_name = rows[0].rest_name;
 
           query = 'UPDATE restaurants SET coin = coin + ? WHERE id = ?';
           connection.query(query, [refund_to_restaurant, json.rest_id], function (err, rows, fields) {
@@ -990,10 +1156,41 @@ router.post('/', function(req, res, next) {
               connection.release();
               return next(err);
             }
-            connection.release();
-            var msg = '손님이 설정한 예약금 ' + refund_to_restaurant + '원을 지급받았습니다.'
-            res.json({result:'success', description:msg});
-            return;
+
+            query = 'SELECT token FROM users WHERE id = ?';
+            connection.query(query, user_id, function (err, rows, fields) {
+              if (err) {
+                console.log(err);
+                connection.release();
+                return next(err);
+              }
+              var token = rows[0].token;
+              var message = {
+                to: token,
+                data: {
+                  rest_name: rest_name
+                },
+                notification: {
+                  title: '예약을 어기셨네요... ㅠㅠ',
+                  body: '예약금 전액은 식당에게 지급됩니다',
+                  sound: 'default'
+                }
+              };
+
+              fcm_rest.send(message, function(err, response){
+                  if (err) {
+                    console.log(err);
+                    console.log('Something has gone wrong!');
+                  } else {
+                    console.log('Successfully sent with response:', response);
+                  }
+              });
+
+              connection.release();
+              var msg = '손님이 설정한 예약금 ' + refund_to_restaurant + '원을 지급받았습니다.'
+              res.json({result:'success', description:msg});
+              return;
+            });
           });
         });
       });
@@ -1015,7 +1212,7 @@ var hasOwnProperty = Object.prototype.hasOwnProperty;
 
 function isEmpty(obj) {
 
-    // null and undefined are "empty"
+    // null and undefined are empty
     if (obj == null) return true;
 
     // Assume if it has a length property with a non-zero value
@@ -1026,7 +1223,7 @@ function isEmpty(obj) {
     // If it isn't an object at this point
     // it is empty, but it can't be anything *but* empty
     // Is it empty?  Depends on your application.
-    if (typeof obj !== "object") return true;
+    if (typeof obj !== 'object') return true;
 
     // Otherwise, does it have any properties of its own?
     // Note that this doesn't handle
@@ -1092,8 +1289,8 @@ function decodeBase64Image(dataString) {
 
 function getImageContainer(dataString) {
   var header = dataString.substring(0,30);
-  var end = header.indexOf(";base64,");
-  var start = "data:image/".length;
+  var end = header.indexOf(';base64,');
+  var start = 'data:image/'.length;
   return '.' + header.substring(start, end);
 }
 
