@@ -350,7 +350,7 @@ router.post('/', function(req, res, next) {
           location : rows[0].location,
           coin : rows[0].coin,
           pic : rows[0].pic,
-          type : rows[0].type,
+          rest_type : rows[0].rest_type,
           description : rows[0].description,
           respond_time : rows[0].respond_time,
           oper_time : rows[0].oper_time,
@@ -435,8 +435,8 @@ router.post('/', function(req, res, next) {
       break;
 
     case 'UPDATE_REST_INFO':
-      // rest_id, name, phone, location, type, description, oper_time, rest_time, holiday, price, reserv_price
-      if (!json.rest_id || !json.name || !json.phone || !json.location || !json.type || !json.description
+      // rest_id, name, phone, location, rest_type, description, oper_time, rest_time, holiday, price, reserv_price
+      if (!json.rest_id || !json.name || !json.phone || !json.location || !json.rest_type || !json.description
          || !json.oper_time || !json.rest_time || !json.holiday || !json.price || !json.reserv_price) {
         connection.release();
         res.json({result:'failed', description:'some fields are not found'});
@@ -453,8 +453,8 @@ router.post('/', function(req, res, next) {
           res.json({result:'failed', description:'user_id not exists'});
           return next(err);
         }
-        query = 'UPDATE restaurants SET name = ?, phone = ?, location = ?, type = ?, description = ?, oper_time = ?, rest_time = ?, holiday = ?, price = ?, reserv_price = ? WHERE id = ?';
-        connection.query(query, [json.name, json.phone, json.location, json.type, json.description, json.oper_time, json.rest_time, json.holiday, json.price, json.reserv_price, json.rest_id], function(err, rows, fields) {
+        query = 'UPDATE restaurants SET name = ?, phone = ?, location = ?, rest_type = ?, description = ?, oper_time = ?, rest_time = ?, holiday = ?, price = ?, reserv_price = ? WHERE id = ?';
+        connection.query(query, [json.name, json.phone, json.location, json.rest_type, json.description, json.oper_time, json.rest_time, json.holiday, json.price, json.reserv_price, json.rest_id], function(err, rows, fields) {
           if (err) {
             connection.release();
             return next(err);
@@ -488,7 +488,7 @@ router.post('/', function(req, res, next) {
             phone : rows[i].phone,
             location : rows[i].location,
             pic : rows[i].pic,
-            type : rows[i].type,
+            rest_type : rows[i].rest_type,
             description : rows[i].description,
             respond_time : rows[i].respond_time,
             oper_time : rows[i].oper_time,
