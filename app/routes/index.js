@@ -143,8 +143,6 @@ router.post('/', function(req, res, next) {
     switch(json.type) {
       case 'USER_LOGIN':
       // id, name, token
-      
-
       if (!json.user_id || !json.name || !json.token) {
         connection.release();
         res.json({result:'failed', description:'user_id or name or token field not found'});
@@ -158,8 +156,8 @@ router.post('/', function(req, res, next) {
         }
         if (!isEmpty(rows)) {
           // IF THE USER EXISTS, UPDATE THE USER WITH NAME, TOKEN
-          query = 'UPDATE users SET name = ?, token = ? WHERE id = ?';
-          connection.query(query, [json.name, json.token, json.user_id], function(err, rows, fields) {
+          query = 'UPDATE users SET token = ? WHERE id = ?';
+          connection.query(query, [json.token, json.user_id], function(err, rows, fields) {
             if (err) {
               console.log(err);
               connection.release();
@@ -297,7 +295,7 @@ router.post('/', function(req, res, next) {
         }
         if (!isEmpty(rows)) {
           // IF THE RESTAURANT EXISTS, UPDATE THE RESTAURANT WITH NAME, TOKEN
-          query = 'UPDATE users SET token = ? WHERE id = ?';
+          query = 'UPDATE restaurants SET token = ? WHERE id = ?';
           connection.query(query, [json.token, json.rest_id], function(err, rows, fields) {
             if (err) {
               console.log(err);
